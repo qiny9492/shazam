@@ -1,0 +1,19 @@
+function [fingerprints] = compute_fingerprints(musicDB)
+hashTableSize = 100000;
+global hashtable
+        % Create new database
+        songid = zeros(150);
+        hashtable = cell(hashTableSize,2); % 
+%load('musicDB.mat');
+num=150;
+songIndex=0;
+for i=1:1:num
+peaks = fingerprint(musicDB(i).signal);
+tuple = convert_to_pairs(peaks);
+songIndex=songIndex+1;
+maxCollisions = add_to_table(tuple, songIndex);
+songid(i)=songIndex;
+end
+
+save('SONGID.mat', 'songid');
+save('HASHTABLE.mat', 'hashtable');

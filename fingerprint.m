@@ -1,0 +1,81 @@
+function peaks = fingerprint(data)
+%function peaks = fingerprint(sound, fs)
+%   
+% This function takes a sound and sampling frequency.  It returns a binary
+% matrix indicating the locations of peaks in the spectrogram.
+load('musicDB.mat')
+oldfs=16000;
+newfs=8000;
+gs = 4; % grid size for spectrogram peak search
+desiredPPS = 30; % scales the threshold
+
+winlength=0.064; %spectrogram
+overlap=0.032;
+framelen=round(newfs*winlength);
+stepsize=round(newfs*overlap);
+
+rs=resample(data,newfs,oldfs); %resample
+%y=zeros(ceil(length(rs)-framelen)/stepsize),len);% get the frame number
+[S,F,T,P]=spectrogram(rs,framelen,stepsize,[],newfs);
+magS=abs(S); %magnitude of spectrogram
+%plot(magS);
+%surf(T,F,10*log10(P),'edgecolor','none');
+%axis tight;
+%view(0,90);
+%xlabel('Time(s)');
+%ylabel('Frequency(Hz)');
+
+
+peaks = ones(size(magS)); % 2D boolean array indicating position of local peaks
+for horShift = -gs:gs
+    for vertShift = -gs:gs
+        if(vertShift ~= 0 || horShift ~= 0) % Avoid comparing to self
+            CS=circshift(S,[vertShift,horShift]);
+             Q=(S>CS);% in each comparison, we get a matrix Q containing the
+             %locations of max intensities
+             peaks=peaks.*Q;%only locations survive all the comparison are the peaks
+        end
+    end
+end
+
+%imagesc(T,F,peaks);
+%colormap(1-gray);% get local peaks, black pixels are peaks
+
+peakMags = peaks.*magS;%multiply boolean matrix with the magnitude of whole signal, and get magnitude of peaks
+sortedpeakMags = sort(peakMags(:),'descend'); % sort all peak values in order
+threshold = sortedpeakMags(ceil(max(T)*desiredPPS)); % set threshold to remain larger peaks
+
+% Apply threshold
+if (threshold > 0)
+    peaks = (peakMags >= threshold);
+end
+
+optional_plot = 0; % turn plot on or off
+
+if optional_plot
+    % plot spectrogram
+    figure(1)
+    Tplot = [5, 10]; % Time axis for plot
+
+    logS = log(magS);
+    imagesc(T,F,logS);
+    title('Log Spectrogram');
+    xlabel('time (s)');
+    ylabel('frequency (Hz)');
+    axis xy
+    axis([Tplot, -inf, inf])
+    frame1 = getframe;
+
+    % plot local peaks over spectrogram
+    peaksSpec = (logS - min(min(logS))).*(1-peaks);
+    imagesc(T,F,peaksSpec);
+    title('Log Spectrogram');
+    xlabel('time (s)');
+    ylabel('frequency (Hz)');
+    axis xy
+    axis([Tplot, -inf, inf])
+    frame2 = getframe;
+
+    movie([frame1,frame2],10,1)
+end
+
